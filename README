@@ -1,27 +1,90 @@
 # Define the output file
 $evidenceFile = "evidence01.txt"
 
-# Initialize the evidence file
-"Office 2016 Macro Settings Report" | Out-File $evidenceFile
-"Generated on: $(Get-Date)" | Out-File $evidenceFile -Append
-"`n" | Out-File $evidenceFile -Append
+# Initialize the evidence file with a header
+"Office 2016 Macro Settings Report" | Out-File -FilePath $evidenceFile -Encoding UTF8
+"Generated on: $(Get-Date)" | Out-File -FilePath $evidenceFile -Append -Encoding UTF8
+"`n" | Out-File -FilePath $evidenceFile -Append -Encoding UTF8
 
-# Define applications and settings
-$applications = @("Access", "Excel", "Word", "PowerPoint", "Outlook")
-$settings = @("BlockContentExecutionFromInternet", "VBAWarnings")
+# Define the registry keys to query
+$registrySettings = @(
+    @{
+        App = "Access"
+        Setting = "BlockContentExecutionFromInternet"
+        RegPath = "HKCU\Software\Policies\Microsoft\Office\16.0\Access\Security"
+    },
+    @{
+        App = "Excel"
+        Setting = "BlockContentExecutionFromInternet"
+        RegPath = "HKCU\Software\Policies\Microsoft\Office\16.0\Excel\Security"
+    },
+    @{
+        App = "Word"
+        Setting = "BlockContentExecutionFromInternet"
+        RegPath = "HKCU\Software\Policies\Microsoft\Office\16.0\Word\Security"
+    },
+    @{
+        App = "PowerPoint"
+        Setting = "BlockContentExecutionFromInternet"
+        RegPath = "HKCU\Software\Policies\Microsoft\Office\16.0\PowerPoint\Security"
+    },
+    @{
+        App = "Outlook"
+        Setting = "BlockContentExecutionFromInternet"
+        RegPath = "HKCU\Software\Policies\Microsoft\Office\16.0\Outlook\Security"
+    },
+    @{
+        App = "Access"
+        Setting = "VBAWarnings"
+        RegPath = "HKCU\Software\Policies\Microsoft\Office\16.0\Access\Security"
+    },
+    @{
+        App = "Excel"
+        Setting = "VBAWarnings"
+        RegPath = "HKCU\Software\Policies\Microsoft\Office\16.0\Excel\Security"
+    },
+    @{
+        App = "Word"
+        Setting = "VBAWarnings"
+        RegPath = "HKCU\Software\Policies\Microsoft\Office\16.0\Word\Security"
+    },
+    @{
+        App = "PowerPoint"
+        Setting = "VBAWarnings"
+        RegPath = "HKCU\Software\Policies\Microsoft\Office\16.0\PowerPoint\Security"
+    },
+    @{
+        App = "Outlook"
+        Setting = "VBAWarnings"
+        RegPath = "HKCU\Software\Policies\Microsoft\Office\16.0\Outlook\Security"
+    }
+)
 
-foreach ($app in $applications) {
-    foreach ($setting in $settings) {
-        $regPath = "HKCU:\Software\Policies\Microsoft\Office\16.0\$app\Security"
-        try {
-            $value = Get-ItemProperty -Path $regPath -Name $setting -ErrorAction Stop
-            "${app} - ${setting}: $($value.$setting)" | Out-File $evidenceFile -Append
-        }
-        catch {
-            "${app} - ${setting}: Not Set" | Out-File $evidenceFile -Append
+# Iterate over each registry setting and perform the query
+foreach ($item in $registrySettings) {
+    $app = $item.App
+    $setting = $item.Setting
+    $regPath = $item.RegPath
+
+    # Construct the reg query command
+    $command = "reg query `"$regPath`" /v $setting"
+
+    # Write the command to the evidence file
+    $command | Out-File -FilePath $evidenceFile -Append -Encoding UTF8
+
+    # Execute the reg query command and capture the output
+    try {
+        $output = & reg query "$regPath" /v "$setting" 2>&1
+        foreach ($line in $output) {
+            $line | Out-File -FilePath $evidenceFile -Append -Encoding UTF8
         }
     }
-    "`n" | Out-File $evidenceFile -Append
+    catch {
+        "Error querying $regPath for $setting: $_" | Out-File -FilePath $evidenceFile -Append -Encoding UTF8
+    }
+
+    # Add a separator for readability
+    "`n" | Out-File -FilePath $evidenceFile -Append -Encoding UTF8
 }
 
 # Confirmation message
