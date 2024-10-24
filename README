@@ -1,29 +1,44 @@
 # Define registry paths and value names
 $registryPaths = @{
-    "Access_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Access\Security\BlockContentExecutionFromInternet"
-    "Excel_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Excel\Security\BlockContentExecutionFromInternet"
-    "Word_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Word\Security\BlockContentExecutionFromInternet"
-    "PowerPoint_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\PowerPoint\Security\BlockContentExecutionFromInternet"
-    "Outlook_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Outlook\Security\BlockContentExecutionFromInternet"
-    "Access_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Access\Security\VBAWarnings"
-    "Excel_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Excel\Security\VBAWarnings"
-    "Word_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Word\Security\VBAWarnings"
-    "PowerPoint_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\PowerPoint\Security\VBAWarnings"
-    "Outlook_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Outlook\Security\VBAWarnings"
+    "Access_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Access\Security"
+    "Excel_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Excel\Security"
+    "Word_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Word\Security"
+    "PowerPoint_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\PowerPoint\Security"
+    "Outlook_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Outlook\Security"
+    "Access_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Access\Security"
+    "Excel_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Excel\Security"
+    "Word_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Word\Security"
+    "PowerPoint_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\PowerPoint\Security"
+    "Outlook_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Outlook\Security"
+}
+
+# Define the value names
+$valueNames = @{
+    "Access_BlockContentExecutionFromInternet" = "BlockContentExecutionFromInternet"
+    "Excel_BlockContentExecutionFromInternet" = "BlockContentExecutionFromInternet"
+    "Word_BlockContentExecutionFromInternet" = "BlockContentExecutionFromInternet"
+    "PowerPoint_BlockContentExecutionFromInternet" = "BlockContentExecutionFromInternet"
+    "Outlook_BlockContentExecutionFromInternet" = "BlockContentExecutionFromInternet"
+    "Access_VBAWarnings" = "VBAWarnings"
+    "Excel_VBAWarnings" = "VBAWarnings"
+    "Word_VBAWarnings" = "VBAWarnings"
+    "PowerPoint_VBAWarnings" = "VBAWarnings"
+    "Outlook_VBAWarnings" = "VBAWarnings"
 }
 
 # Initialize the output file
 $outputFile = "evidence01.txt"
-Clear-Content -Path $outputFile
+Clear-Content -Path $outputFile -ErrorAction SilentlyContinue
 
 # Function to get registry value
 function Get-RegistryValue {
     param (
-        [string]$path
+        [string]$path,
+        [string]$valueName
     )
     try {
-        $value = Get-ItemProperty -Path $path -ErrorAction Stop
-        return $value.PSObject.Properties.Value
+        $value = Get-ItemProperty -Path $path -Name $valueName -ErrorAction Stop
+        return $value.$valueName
     } catch {
         return "Not Found"
     }
@@ -31,7 +46,9 @@ function Get-RegistryValue {
 
 # Query each registry path and write to the output file
 foreach ($key in $registryPaths.Keys) {
-    $value = Get-RegistryValue -path $registryPaths[$key]
+    $path = $registryPaths[$key]
+    $valueName = $valueNames[$key]
+    $value = Get-RegistryValue -path $path -valueName $valueName
     Add-Content -Path $outputFile -Value "$key: $value"
 }
 
