@@ -2,29 +2,26 @@
 $evidenceFile = "evidence01.txt"
 
 # Initialize the evidence file
-"Office 2016 Macro Settings Report" | Out-File -FilePath $evidenceFile
-"Generated on: $(Get-Date)" | Out-File -FilePath $evidenceFile -Append
-"`n" | Out-File -FilePath $evidenceFile -Append
+"Office 2016 Macro Settings Report" | Out-File $evidenceFile
+"Generated on: $(Get-Date)" | Out-File $evidenceFile -Append
+"" | Out-File $evidenceFile -Append
 
-# Define applications and their corresponding registry paths and values
+# Define applications and settings
 $applications = @("Access", "Excel", "Word", "PowerPoint", "Outlook")
-$settings = @(
-    "BlockContentExecutionFromInternet",
-    "VBAWarnings"
-)
+$settings = @("BlockContentExecutionFromInternet", "VBAWarnings")
 
 foreach ($app in $applications) {
     foreach ($setting in $settings) {
-        $regPath = "HKCU:\Software\Policies\Microsoft\Office\16.0\$app\Security"
+        $regPath = "HKCU:\Software\Policies\Microsoft\Office\16.0\${app}\Security"
         try {
             $value = Get-ItemProperty -Path $regPath -Name $setting -ErrorAction Stop
-            "$app - $setting: $($value.$setting)" | Out-File -FilePath $evidenceFile -Append
+            "$app - $setting: $($value.$setting)" | Out-File $evidenceFile -Append
         }
         catch {
-            "$app - $setting: Not Set" | Out-File -FilePath $evidenceFile -Append
+            "$app - $setting: Not Set" | Out-File $evidenceFile -Append
         }
     }
-    "`n" | Out-File -FilePath $evidenceFile -Append
+    "" | Out-File $evidenceFile -Append
 }
 
 # Confirmation message
