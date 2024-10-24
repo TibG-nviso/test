@@ -1,55 +1,31 @@
-# Define registry paths and value names
-$registryPaths = @{
-    "Access_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Access\Security"
-    "Excel_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Excel\Security"
-    "Word_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Word\Security"
-    "PowerPoint_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\PowerPoint\Security"
-    "Outlook_BlockContentExecutionFromInternet" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Outlook\Security"
-    "Access_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Access\Security"
-    "Excel_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Excel\Security"
-    "Word_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Word\Security"
-    "PowerPoint_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\PowerPoint\Security"
-    "Outlook_VBAWarnings" = "HKCU:\Software\Policies\Microsoft\Office\16.0\Outlook\Security"
-}
+# Define the output file
+$evidenceFile = "evidence01.txt"
 
-# Define the value names
-$valueNames = @{
-    "Access_BlockContentExecutionFromInternet" = "BlockContentExecutionFromInternet"
-    "Excel_BlockContentExecutionFromInternet" = "BlockContentExecutionFromInternet"
-    "Word_BlockContentExecutionFromInternet" = "BlockContentExecutionFromInternet"
-    "PowerPoint_BlockContentExecutionFromInternet" = "BlockContentExecutionFromInternet"
-    "Outlook_BlockContentExecutionFromInternet" = "BlockContentExecutionFromInternet"
-    "Access_VBAWarnings" = "VBAWarnings"
-    "Excel_VBAWarnings" = "VBAWarnings"
-    "Word_VBAWarnings" = "VBAWarnings"
-    "PowerPoint_VBAWarnings" = "VBAWarnings"
-    "Outlook_VBAWarnings" = "VBAWarnings"
-}
+# Initialize the evidence file
+"Office 2016 Macro Settings Report" | Out-File -FilePath $evidenceFile
+"Generated on: $(Get-Date)" | Out-File -FilePath $evidenceFile -Append
+"`n" | Out-File -FilePath $evidenceFile -Append
 
-# Initialize the output file
-$outputFile = "evidence01.txt"
-Clear-Content -Path $outputFile -ErrorAction SilentlyContinue
+# Define applications and their corresponding registry paths and values
+$applications = @("Access", "Excel", "Word", "PowerPoint", "Outlook")
+$settings = @(
+    "BlockContentExecutionFromInternet",
+    "VBAWarnings"
+)
 
-# Function to get registry value
-function Get-RegistryValue {
-    param (
-        [string]$path,
-        [string]$valueName
-    )
-    try {
-        $value = Get-ItemProperty -Path $path -Name $valueName -ErrorAction Stop
-        return $value.$valueName
-    } catch {
-        return "Not Found"
+foreach ($app in $applications) {
+    foreach ($setting in $settings) {
+        $regPath = "HKCU:\Software\Policies\Microsoft\Office\16.0\$app\Security"
+        try {
+            $value = Get-ItemProperty -Path $regPath -Name $setting -ErrorAction Stop
+            "$app - $setting: $($value.$setting)" | Out-File -FilePath $evidenceFile -Append
+        }
+        catch {
+            "$app - $setting: Not Set" | Out-File -FilePath $evidenceFile -Append
+        }
     }
+    "`n" | Out-File -FilePath $evidenceFile -Append
 }
 
-# Query each registry path and write to the output file
-foreach ($key in $registryPaths.Keys) {
-    $path = $registryPaths[$key]
-    $valueName = $valueNames[$key]
-    $value = Get-RegistryValue -path $path -valueName $valueName
-    Add-Content -Path $outputFile -Value "$key: $value"
-}
-
-Write-Host "Registry values have been written to $outputFile"
+# Confirmation message
+Write-Output "Registry values have been exported to $evidenceFile"
