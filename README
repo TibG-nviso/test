@@ -1,4 +1,4 @@
-# Define the output file
+#
 $evidenceFile = "evidence01.txt"
 
 # Initialize the evidence file with a header
@@ -70,7 +70,7 @@ foreach ($item in $registrySettings) {
     $command = "reg query `"$regPath`" /v $setting"
 
     # Write the command to the evidence file
-    "$command" | Out-File -FilePath $evidenceFile -Append -Encoding UTF8
+    "`$command: $command" | Out-File -FilePath $evidenceFile -Append -Encoding UTF8
 
     # Execute the reg query command and capture the output
     try {
