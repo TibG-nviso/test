@@ -1,4 +1,3 @@
-#
 $evidenceFile = "evidence01.txt"
 
 # Initialize the evidence file with a header
