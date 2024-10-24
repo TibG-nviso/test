@@ -1,389 +1,254 @@
-# PowerShell Script to Extract Microsoft Office 2016 Trust Center Registry Settings with Accurate Paths and Explanations
+# Start capturing the transcript for evidence
+Start-Transcript -Path "evidence01.txt" -Append
 
-# Define the output file path with a timestamp for uniqueness
-$outputFile = "$env:USERPROFILE\Desktop\OfficeTrustCenterSettings_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+# Function to check a registry setting and output its value and meaning
+Function Check-RegistrySetting {
+    param (
+        [string]$AppName,
+        [string]$RegistryPath,
+        [string]$ValueName,
+        [Hashtable]$ValueMeanings
+    )
 
-# Initialize an array to store the results
-$results = @()
+    Write-Host "--------------------------------------------------"
+    Write-Host "Checking $AppName - $ValueName"
+    Write-Host "--------------------------------------------------"
 
-# Define Office applications and their corresponding registry paths
-$officeApps = @(
-    "Access",
-    "Excel",
-    "Outlook",
-    "PowerPoint",
-    "Project",
-    "Publisher",
-    "Visio",
-    "Word"
-)
+    # Prepare the registry path
+    $regPath = "HKCU\$RegistryPath"
 
-# Define the base registry path for Office 2016 (version 16.0)
-$baseRegPath = "HKCU:\Software\Microsoft\Office\16.0"
+    # Prepare the reg query command
+    $command = "reg query `"$regPath`" /v $ValueName"
 
-# Define the settings to extract for each application, including accurate value names and explanations
+    Write-Host "Command: $command"
+    Write-Host ""
+
+    # Execute the command and capture the output
+    try {
+        $output = & reg query "$regPath" /v $ValueName 2>&1
+
+        # Output the command and its result
+        Write-Host $output
+        Write-Host ""
+
+        # Parse the output to get the value
+        $valueLine = $output | Where-Object { $_ -match $ValueName }
+        if ($valueLine) {
+            $tokens = $valueLine -split "\s+"
+            $value = $tokens[-1]
+            Write-Host "Value: $value"
+            if ($ValueMeanings.ContainsKey($value)) {
+                Write-Host "Meaning: $($ValueMeanings[$value])"
+            } else {
+                Write-Host "Meaning: Unknown value"
+            }
+        } else {
+            Write-Host "Value not found in output."
+        }
+    } catch {
+        Write-Host "Error querying registry: $_"
+    }
+    Write-Host "`n"
+}
+
+# Define the settings to check
 $settings = @(
+    # Microsoft Access 2016 - Block macros from running in Office files from the internet
     @{
-        Application = "Access"
-        Settings = @(
-            @{
-                Name = "Block Macros from Running in Office Files from the Internet"
-                RegPath = "Access\Security"
-                ValueName = "BlockMacrosFromInternet"
-                Explanation = @{
-                    "1" = "Block macros from running in Office files downloaded from the internet."
-                    "0" = "Do not block macros from running in Office files downloaded from the internet."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            },
-            @{
-                Name = "VBA Macro Notification Settings"
-                RegPath = "Access\Security"
-                ValueName = "VBAWarnings"
-                Explanation = @{
-                    "1" = "Disable all macros without notification."
-                    "2" = "Disable all macros with notification."
-                    "3" = "Disable all macros except digitally signed macros."
-                    "4" = "Enable all macros (not recommended)."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            }
-        )
+        AppName = "Microsoft Access 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\access\security"
+        ValueName = "BlockContentExecutionFromInternet"
+        ValueMeanings = @{
+            0 = "Macros in files from the Internet are enabled."
+            1 = "Macros in files from the Internet are blocked."
+        }
     },
+    # Microsoft Access 2016 - VBA Macro Notification Settings
     @{
-        Application = "Excel"
-        Settings = @(
-            @{
-                Name = "Block Macros from Running in Office Files from the Internet"
-                RegPath = "Excel\Security"
-                ValueName = "BlockMacrosFromInternet"
-                Explanation = @{
-                    "1" = "Block macros from running in Office files downloaded from the internet."
-                    "0" = "Do not block macros from running in Office files downloaded from the internet."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            },
-            @{
-                Name = "VBA Macro Notification Settings"
-                RegPath = "Excel\Security"
-                ValueName = "VBAWarnings"
-                Explanation = @{
-                    "1" = "Disable all macros without notification."
-                    "2" = "Disable all macros with notification."
-                    "3" = "Disable all macros except digitally signed macros."
-                    "4" = "Enable all macros (not recommended)."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            },
-            @{
-                Name = "File Block Settings (Excel 97-2003 Workbooks and Templates)"
-                RegPath = "Excel\Security\File Block Settings"
-                ValueName = "Excel97_2003"
-                Explanation = @{
-                    "0" = "Do not block opening or saving of Excel 97-2003 files."
-                    "1" = "Block opening of Excel 97-2003 files."
-                    "2" = "Block saving of Excel 97-2003 files."
-                    "3" = "Block both opening and saving of Excel 97-2003 files."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            }
-        )
+        AppName = "Microsoft Access 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\access\security"
+        ValueName = "VBAWarnings"
+        ValueMeanings = @{
+            1 = "Disable all macros with notification."
+            2 = "Notifications for digitally signed macros, all others disabled."
+            3 = "Disable all macros without notification."
+            4 = "Enable all macros (not recommended)."
+        }
     },
+    # Microsoft Excel 2016 - Block macros from running in Office files from the internet
     @{
-        Application = "Outlook"
-        Settings = @(
-            @{
-                Name = "Cryptography - Minimum Encryption Settings"
-                RegPath = "Outlook\Security"
-                ValueName = "MinimumEncryptionLevel"
-                Explanation = @{
-                    "1" = "No encryption required."
-                    "2" = "Encrypt only messages sent to users in the organization's directory."
-                    "3" = "Encrypt all messages."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            }
-        )
+        AppName = "Microsoft Excel 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\excel\security"
+        ValueName = "BlockContentExecutionFromInternet"
+        ValueMeanings = @{
+            0 = "Macros in files from the Internet are enabled."
+            1 = "Macros in files from the Internet are blocked."
+        }
     },
+    # Microsoft Excel 2016 - VBA Macro Notification Settings
     @{
-        Application = "PowerPoint"
-        Settings = @(
-            @{
-                Name = "Block Macros from Running in Office Files from the Internet"
-                RegPath = "PowerPoint\Security"
-                ValueName = "BlockMacrosFromInternet"
-                Explanation = @{
-                    "1" = "Block macros from running in Office files downloaded from the internet."
-                    "0" = "Do not block macros from running in Office files downloaded from the internet."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            },
-            @{
-                Name = "VBA Macro Notification Settings"
-                RegPath = "PowerPoint\Security"
-                ValueName = "VBAWarnings"
-                Explanation = @{
-                    "1" = "Disable all macros without notification."
-                    "2" = "Disable all macros with notification."
-                    "3" = "Disable all macros except digitally signed macros."
-                    "4" = "Enable all macros (not recommended)."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            }
-        )
+        AppName = "Microsoft Excel 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\excel\security"
+        ValueName = "VBAWarnings"
+        ValueMeanings = @{
+            1 = "Disable all macros with notification."
+            2 = "Notifications for digitally signed macros, all others disabled."
+            3 = "Disable all macros without notification."
+            4 = "Enable all macros (not recommended)."
+        }
     },
+    # Microsoft Excel 2016 - File Block Settings for Excel 97-2003 workbooks and templates
     @{
-        Application = "Project"
-        Settings = @(
-            @{
-                Name = "VBA Macro Notification Settings"
-                RegPath = "Project\Security"
-                ValueName = "VBAWarnings"
-                Explanation = @{
-                    "1" = "Disable all macros without notification."
-                    "2" = "Disable all macros with notification."
-                    "3" = "Disable all macros except digitally signed macros."
-                    "4" = "Enable all macros (not recommended)."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            }
-        )
+        AppName = "Microsoft Excel 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\excel\security\fileblock"
+        ValueName = "Excel97to2003Files"
+        ValueMeanings = @{
+            0 = "Open/Save allowed."
+            1 = "Open/Save blocked."
+            2 = "Open blocked, Save allowed."
+            3 = "Open allowed, Save blocked."
+        }
     },
+    # Microsoft Office 2016 - Trusted Location #1
     @{
-        Application = "Publisher"
-        Settings = @(
-            @{
-                Name = "VBA Macro Notification Settings"
-                RegPath = "Publisher\Security"
-                ValueName = "VBAWarnings"
-                Explanation = @{
-                    "1" = "Disable all macros without notification."
-                    "2" = "Disable all macros with notification."
-                    "3" = "Disable all macros except digitally signed macros."
-                    "4" = "Enable all macros (not recommended)."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            }
-        )
-    },
-    @{
-        Application = "Visio"
-        Settings = @(
-            @{
-                Name = "Block Macros from Running in Office Files from the Internet"
-                RegPath = "Visio\Security"
-                ValueName = "BlockMacrosFromInternet"
-                Explanation = @{
-                    "1" = "Block macros from running in Office files downloaded from the internet."
-                    "0" = "Do not block macros from running in Office files downloaded from the internet."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            },
-            @{
-                Name = "VBA Macro Notification Settings"
-                RegPath = "Visio\Security"
-                ValueName = "VBAWarnings"
-                Explanation = @{
-                    "1" = "Disable all macros without notification."
-                    "2" = "Disable all macros with notification."
-                    "3" = "Disable all macros except digitally signed macros."
-                    "4" = "Enable all macros (not recommended)."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            }
-        )
-    },
-    @{
-        Application = "Word"
-        Settings = @(
-            @{
-                Name = "Block Macros from Running in Office Files from the Internet"
-                RegPath = "Word\Security"
-                ValueName = "BlockMacrosFromInternet"
-                Explanation = @{
-                    "1" = "Block macros from running in Office files downloaded from the internet."
-                    "0" = "Do not block macros from running in Office files downloaded from the internet."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            },
-            @{
-                Name = "VBA Macro Notification Settings"
-                RegPath = "Word\Security"
-                ValueName = "VBAWarnings"
-                Explanation = @{
-                    "1" = "Disable all macros without notification."
-                    "2" = "Disable all macros with notification."
-                    "3" = "Disable all macros except digitally signed macros."
-                    "4" = "Enable all macros (not recommended)."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            },
-            @{
-                Name = "File Block Settings (Word 2003 Binary Documents and Templates)"
-                RegPath = "Word\Security\File Block Settings"
-                ValueName = "Word2003Binary"
-                Explanation = @{
-                    "0" = "Do not block opening or saving of Word 2003 binary documents and templates."
-                    "1" = "Block opening of Word 2003 binary documents and templates."
-                    "2" = "Block saving of Word 2003 binary documents and templates."
-                    "3" = "Block both opening and saving of Word 2003 binary documents and templates."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            },
-            @{
-                Name = "File Block Settings (Word 2007 and Later Binary Documents and Templates)"
-                RegPath = "Word\Security\File Block Settings"
-                ValueName = "Word2007PlusBinary"
-                Explanation = @{
-                    "0" = "Do not block opening or saving of Word 2007 and later binary documents and templates."
-                    "1" = "Block opening of Word 2007 and later binary documents and templates."
-                    "2" = "Block saving of Word 2007 and later binary documents and templates."
-                    "3" = "Block both opening and saving of Word 2007 and later binary documents and templates."
-                    "Not Set or Not Found" = "The setting is not configured."
-                }
-            }
-        )
-    }
-)
-
-# Define Trusted Location settings separately as they are common across applications or under specific paths
-$trustedLocations = @(
-    @{
-        Application = "Common"
-        Name = "Trusted Location #1"
-        RegPath = "Common\TrustCenter\TrustLocations\Location1"
+        AppName = "Microsoft Office 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\common\trusted locations\location1"
         ValueName = "Path"
-        Explanation = "The first trusted location path. Files in this location are exempt from certain security checks."
+        ValueMeanings = @{}
+    },
+    # Microsoft Outlook 2016 - Minimum encryption settings
+    @{
+        AppName = "Microsoft Outlook 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\outlook\security"
+        ValueName = "MinimumEncryptionSettings"
+        ValueMeanings = @{
+            0 = "No minimum encryption."
+            1 = "Minimum encryption required."
+        }
+    },
+    # Microsoft PowerPoint 2016 - Block macros from running in Office files from the internet
+    @{
+        AppName = "Microsoft PowerPoint 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\powerpoint\security"
+        ValueName = "BlockContentExecutionFromInternet"
+        ValueMeanings = @{
+            0 = "Macros in files from the Internet are enabled."
+            1 = "Macros in files from the Internet are blocked."
+        }
+    },
+    # Microsoft PowerPoint 2016 - VBA Macro Notification Settings
+    @{
+        AppName = "Microsoft PowerPoint 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\powerpoint\security"
+        ValueName = "VBAWarnings"
+        ValueMeanings = @{
+            1 = "Disable all macros with notification."
+            2 = "Notifications for digitally signed macros, all others disabled."
+            3 = "Disable all macros without notification."
+            4 = "Enable all macros (not recommended)."
+        }
+    },
+    # Microsoft Project 2016 - VBA Macro Notification Settings
+    @{
+        AppName = "Microsoft Project 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\msproject\security"
+        ValueName = "VBAWarnings"
+        ValueMeanings = @{
+            1 = "Disable all macros with notification."
+            2 = "Notifications for digitally signed macros, all others disabled."
+            3 = "Disable all macros without notification."
+            4 = "Enable all macros (not recommended)."
+        }
+    },
+    # Microsoft Publisher 2016 - VBA Macro Notification Settings
+    @{
+        AppName = "Microsoft Publisher 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\publisher\security"
+        ValueName = "VBAWarnings"
+        ValueMeanings = @{
+            1 = "Disable all macros with notification."
+            2 = "Notifications for digitally signed macros, all others disabled."
+            3 = "Disable all macros without notification."
+            4 = "Enable all macros (not recommended)."
+        }
+    },
+    # Microsoft Visio 2016 - Block macros from running in Office files from the internet
+    @{
+        AppName = "Microsoft Visio 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\visio\security"
+        ValueName = "BlockContentExecutionFromInternet"
+        ValueMeanings = @{
+            0 = "Macros in files from the Internet are enabled."
+            1 = "Macros in files from the Internet are blocked."
+        }
+    },
+    # Microsoft Visio 2016 - VBA Macro Notification Settings
+    @{
+        AppName = "Microsoft Visio 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\visio\security"
+        ValueName = "VBAWarnings"
+        ValueMeanings = @{
+            1 = "Disable all macros with notification."
+            2 = "Notifications for digitally signed macros, all others disabled."
+            3 = "Disable all macros without notification."
+            4 = "Enable all macros (not recommended)."
+        }
+    },
+    # Microsoft Word 2016 - Block macros from running in Office files from the internet
+    @{
+        AppName = "Microsoft Word 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\word\security"
+        ValueName = "BlockContentExecutionFromInternet"
+        ValueMeanings = @{
+            0 = "Macros in files from the Internet are enabled."
+            1 = "Macros in files from the Internet are blocked."
+        }
+    },
+    # Microsoft Word 2016 - VBA Macro Notification Settings
+    @{
+        AppName = "Microsoft Word 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\word\security"
+        ValueName = "VBAWarnings"
+        ValueMeanings = @{
+            1 = "Disable all macros with notification."
+            2 = "Notifications for digitally signed macros, all others disabled."
+            3 = "Disable all macros without notification."
+            4 = "Enable all macros (not recommended)."
+        }
+    },
+    # Microsoft Word 2016 - File Block Settings for Word 2003 binary documents and templates
+    @{
+        AppName = "Microsoft Word 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\word\security\fileblock"
+        ValueName = "OpenFiles"
+        ValueMeanings = @{
+            0 = "Open/Save allowed."
+            1 = "Open/Save blocked."
+            2 = "Open blocked, Save allowed."
+            3 = "Open allowed, Save blocked."
+        }
+    },
+    # Microsoft Word 2016 - File Block Settings for Word 2007 and later binary documents and templates
+    @{
+        AppName = "Microsoft Word 2016"
+        RegistryPath = "Software\Policies\Microsoft\Office\16.0\word\security\fileblock"
+        ValueName = "OpenFilesBeforeVersion"
+        ValueMeanings = @{
+            0 = "Open/Save allowed."
+            1 = "Open/Save blocked."
+            2 = "Open blocked, Save allowed."
+            3 = "Open allowed, Save blocked."
+        }
     }
 )
 
-# Function to safely retrieve a registry value
-function Get-RegistryValueSafe {
-    param (
-        [string]$Path,
-        [string]$Name
-    )
-    try {
-        if (Test-Path $Path) {
-            $value = Get-ItemProperty -Path $Path -Name $Name -ErrorAction Stop | Select-Object -ExpandProperty $Name
-            return $value
-        }
-        else {
-            return "Path Not Found"
-        }
-    }
-    catch {
-        return "Value Not Found"
-    }
+# Iterate over the settings and check them
+foreach ($setting in $settings) {
+    Check-RegistrySetting -AppName $setting.AppName `
+                          -RegistryPath $setting.RegistryPath `
+                          -ValueName $setting.ValueName `
+                          -ValueMeanings $setting.ValueMeanings
 }
 
-# Function to get explanation based on setting and value
-function Get-Explanation {
-    param (
-        [hashtable]$Explanations,
-        [string]$Value
-    )
-    if ($Explanations.ContainsKey($Value)) {
-        return $Explanations[$Value]
-    }
-    elseif ($Explanations.ContainsKey("Not Set or Not Found")) {
-        return $Explanations["Not Set or Not Found"]
-    }
-    else {
-        return "No explanation available."
-    }
-}
-
-# Function to retrieve Trusted Location Path
-function Get-TrustedLocationPath {
-    param (
-        [string]$Path,
-        [string]$Name
-    )
-    try {
-        if (Test-Path $Path) {
-            $locationPath = Get-ItemProperty -Path $Path -Name $Name -ErrorAction Stop | Select-Object -ExpandProperty $Name
-            return $locationPath
-        }
-        else {
-            return "Path Not Found"
-        }
-    }
-    catch {
-        return "Value Not Found"
-    }
-}
-
-# Iterate through each Office application and its settings
-foreach ($app in $officeApps) {
-    # Find the application settings from the defined list
-    $appSettings = $settings | Where-Object { $_.Application -eq $app }
-    
-    if ($appSettings) {
-        foreach ($setting in $appSettings.Settings) {
-            # Construct the full registry path
-            $fullRegPath = Join-Path -Path $baseRegPath -ChildPath "$($setting.RegPath)"
-            
-            # Retrieve the registry value
-            $value = Get-RegistryValueSafe -Path $fullRegPath -Name $setting.ValueName
-            
-            # Get the explanation for the value
-            $explanation = Get-Explanation -Explanations $setting.Explanation -Value $value.ToString()
-            
-            # Create a custom object for the result
-            $result = [PSCustomObject]@{
-                Application  = $app
-                SettingName  = $setting.Name
-                RegistryPath = $fullRegPath
-                ValueName    = $setting.ValueName
-                Value        = $value
-                Explanation  = $explanation
-            }
-            
-            # Add the result to the results array
-            $results += $result
-        }
-    }
-    else {
-        # If the application is not defined in the settings, note it
-        $result = [PSCustomObject]@{
-            Application  = $app
-            SettingName  = "N/A"
-            RegistryPath = "N/A"
-            ValueName    = "N/A"
-            Value        = "No Settings Defined"
-            Explanation  = "No settings are defined for this application."
-        }
-        $results += $result
-    }
-}
-
-# Iterate through each Trusted Location setting
-foreach ($tl in $trustedLocations) {
-    # Construct the full registry path
-    $fullRegPath = Join-Path -Path $baseRegPath -ChildPath "$($tl.RegPath)"
-    
-    # Retrieve the registry value
-    $value = Get-TrustedLocationPath -Path $fullRegPath -Name $tl.ValueName
-    
-    # Create a custom object for the result
-    $result = [PSCustomObject]@{
-        Application  = $tl.Application
-        SettingName  = $tl.Name
-        RegistryPath = $fullRegPath
-        ValueName    = $tl.ValueName
-        Value        = $value
-        Explanation  = $tl.Explanation
-    }
-    
-    # Add the result to the results array
-    $results += $result
-}
-
-# Output the results to the console in a table format
-$results | Format-Table -AutoSize
-
-# Export the results to a CSV file
-$results | Export-Csv -Path $outputFile -NoTypeInformation
-
-Write-Output "`nAssessment Complete. Results saved to $outputFile"
+# Stop capturing the transcript
+Stop-Transcript
